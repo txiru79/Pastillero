@@ -37,7 +37,7 @@ async function enviarAviso() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Basic ${ONESIGNAL_API_KEY}`
+      "Authorization": `Key ${ONESIGNAL_API_KEY}`
     },
     body: JSON.stringify({
       app_id: APP_ID,
