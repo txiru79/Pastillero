@@ -54,11 +54,16 @@ async function main() {
   const hora = horaActualMadrid();
   console.log(`Hora actual en Madrid: ${hora}h`);
 
+  const forzar = process.env.FORZAR === "si";
+
   // Ventana amplia: de 22h a 3h de la madrugada, para tolerar retrasos de GitHub.
   const dentroDeVentana = hora >= 22 || hora <= 3;
-  if (!dentroDeVentana) {
+  if (!dentroDeVentana && !forzar) {
     console.log("Fuera del rango horario de comprobación. No se hace nada.");
     return;
+  }
+  if (forzar) {
+    console.log("Modo de prueba forzada activado. Se ignora el rango horario.");
   }
 
   const clave = claveDiaAComprobar(hora);
