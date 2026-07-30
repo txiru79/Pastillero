@@ -48,6 +48,9 @@ async function enviarAviso() {
   });
   const resultado = await respuesta.json();
   console.log("Respuesta de OneSignal:", JSON.stringify(resultado));
+
+  const huboError = resultado && Array.isArray(resultado.errors) && resultado.errors.length > 0;
+  return !huboError;
 }
 
 async function main() {
@@ -82,13 +85,21 @@ async function main() {
   const datosAvisos = await respuestaAvisos.json();
   const yaAvisado = datosAvisos && datosAvisos[clave];
 
-  if (yaAvisado) {
+  if (yaAvisado && !forzar) {
     console.log(`Ya se envió un aviso para el día ${clave}. No se repite.`);
     return;
   }
+  if (yaAvisado && forzar) {
+    console.log("Ya había un aviso registrado para hoy, pero el modo de prueba forzada lo ignora.");
+  }
 
   console.log(`No está marcada la pastilla del día ${clave}. Enviando notificación.`);
-  await enviarAviso();
+  const envioCorrecto = await enviarAviso();
+
+  if (!envioCorrecto) {
+    console.log("El envío falló, no se guarda la marca de aviso, para poder reintentarlo.");
+    return;
+  }
 
   await fetch(FIREBASE_AVISOS_URL, {
     method: "PATCH",
