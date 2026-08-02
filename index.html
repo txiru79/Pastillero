@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pastillero</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#20342B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340;0,9..144,560;1,9..144,420&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: "2bf8ee09-a009-49a5-8a61-24257be0e1b0",
+        serviceWorkerParam: { scope: "/Pastillero/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+      });
+    } catch (e) {
+      console.error("No se pudo iniciar OneSignal:", e);
+    }
+  });
+</script>
+<style>
+  :root {
+    --ink: #20342B;
+    --paper: #F6F1E7;
+    --paper-soft: #ECE1CC;
+    --moss: #3F5D46;
+    --moss-light: #5C8268;
+    --berry: #8B3A4A;
+    --gold: #C99A44;
+    --ash: #746C5E;
+    --line: rgba(32, 52, 43, 0.12);
+    --shadow: rgba(32, 52, 43, 0.18);
+    color-scheme: light;
+  }
+
+  :root.noche {
+    --ink: #F1ECDF;
+    --paper: #172119;
+    --paper-soft: #1F2C22;
+    --moss: #7FAE8C;
+    --moss-light: #97C1A3;
+    --berry: #D98A98;
+    --gold: #E4C077;
+    --ash: #A2AB9F;
+    --line: rgba(241, 236, 223, 0.14);
+    --shadow: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    transition: background 0.6s ease, color 0.6s ease;
+    overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #app {
+    max-width: 460px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 28px 22px 48px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .marca {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ash);
+    font-weight: 600;
+  }
+
+  .fecha {
+    font-size: 12px;
+    color: var(--ash);
+    text-align: right;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 340;
+    font-size: 40px;
+    line-height: 1.05;
+    margin: 14px 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .subestado {
+    font-size: 15px;
+    color: var(--ash);
+    margin-bottom: 28px;
+    min-height: 20px;
+  }
+
+  .subestado.tomada { color: var(--moss-light); }
+
+  /* --- Anillo tipo pastillero --- */
+  .escenario {
+    position: relative;
+    width: min(300px, 82vw);
+    height: min(300px, 82vw);
+    margin: 4px auto 22px;
+  }
+
+  .capsula-dia {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    height: 13px;
+    border-radius: 7px;
+    background: transparent;
+    border: 1.5px solid var(--line);
+    transition: background 0.4s ease, border-color 0.4s ease, transform 0.3s ease;
+  }
+
+  .capsula-dia.marcada {
+    background: var(--moss);
+    border-color: var(--moss);
+  }
+
+  .capsula-dia.hoy {
+    border-color: var(--gold);
+    border-width: 2px;
+  }
+
+  .capsula-dia.hoy.marcada {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+
+  .boton-toma {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 62%;
+    height: 62%;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: var(--moss);
+    color: var(--paper);
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 560;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 14%;
+    box-shadow: 0 14px 30px -10px var(--shadow);
+    transition: background 0.4s ease, transform 0.15s ease, box-shadow 0.4s ease;
+  }
+
+  .boton-toma:active { transform: translate(-50%, -50%) scale(0.96); }
+
+  .boton-toma.tomada {
+    background: var(--berry);
+  }
+
+  .racha-linea {
+    text-align: center;
+    font-size: 14px;
+    color: var(--ash);
+    margin-bottom: 34px;
+  }
+
+  .racha-linea strong {
+    font-family: 'Fraunces', serif;
+    font-weight: 560;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  section { margin-bottom: 28px; }
+
+  .titulo-seccion {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .titulo-seccion .contador {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    font-size: 13px;
+  }
+
+  .semana {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .dia-semana {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background: var(--paper-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--ash);
+    border: 1.5px solid transparent;
+  }
+
+  .dia-semana .punto {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+
+  .dia-semana.marcado .punto { background: var(--moss); }
+  .dia-semana.marcado { color: var(--ink); }
+  .dia-semana.hoy { border-color: var(--gold); }
+
+  .historial-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .historial-scroll::-webkit-scrollbar { display: none; }
+
+  .chip-historial {
+    flex: 0 0 auto;
+    min-width: 58px;
+    padding: 10px 8px;
+    border-radius: 14px;
+    background: var(--paper-soft);
+    text-align: center;
+  }
+
+  .chip-historial .num { font-size: 15px; font-weight: 600; }
+  .chip-historial .lbl { font-size: 10px; color: var(--ash); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .chip-historial.marcado { background: var(--moss); color: var(--paper); }
+  .chip-historial.marcado .lbl { color: var(--paper); opacity: 0.75; }
+
+  footer {
+    margin-top: auto;
+    padding-top: 18px;
+    text-align: center;
+  }
+
+  .borrar {
+    background: none;
+    border: none;
+    color: var(--ash);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    box-shadow: 0 10px 24px var(--shadow);
+    z-index: 10;
+  }
+  .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="marca">Pastillero</span>
+    <span class="fecha" id="fecha-larga"></span>
+  </header>
+
+  <h1>Tu pastilla</h1>
+  <div class="subestado" id="estado-hoy"></div>
+
+  <div class="escenario" id="escenario">
+    <button class="boton-toma" id="boton-toma">
+      <span id="texto-boton">Tomada hoy</span>
+    </button>
+  </div>
+
+  <div class="racha-linea" id="racha"></div>
+
+  <section>
+    <div class="titulo-seccion">
+      <span>Esta semana</span>
+      <span class="contador" id="contador-semana"></span>
+    </div>
+    <div class="semana" id="fila-semana"></div>
+  </section>
+
+  <section>
+    <div class="titulo-seccion"><span>Últimos 14 días</span></div>
+    <div class="historial-scroll" id="lista-historial"></div>
+  </section>
+
+  <footer>
+    <button class="borrar" id="borrar-todo">Borrar historial</button>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DIAS_CORTO = ['D','L','M','X','J','V','S'];
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const FIREBASE_URL = 'https://despensa-granon-default-rtdb.europe-west1.firebasedatabase.app';
+
+function claveDia(fecha) {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function cargarRegistro() {
+  try {
+    const guardado = localStorage.getItem('pastilla-registro');
+    return guardado ? JSON.parse(guardado) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function guardarRegistro(registro) {
+  localStorage.setItem('pastilla-registro', JSON.stringify(registro));
+}
+
+let registro = cargarRegistro();
+const hoy = new Date();
+const claveHoy = claveDia(hoy);
+
+async function sincronizarConFirebase() {
+  try {
+    const resp = await fetch(FIREBASE_URL + '/pastilla.json');
+    const remoto = await resp.json();
+    if (remoto) {
+      registro = Object.assign({}, remoto, registro);
+      guardarRegistro(registro);
+      refrescarTodo();
+    }
+  } catch (e) {
+    // sin conexión, seguimos con lo local
+  }
+}
+
+async function subirAFirebase() {
+  try {
+    await fetch(FIREBASE_URL + '/pastilla.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(registro)
+    });
+  } catch (e) {
+    // se sube en la próxima sincronización
+  }
+}
+
+function mostrarToast(texto) {
+  const toast = document.getElementById('toast');
+  toast.textContent = texto;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 1800);
+}
+
+function actualizarFecha() {
+  const nombreDia = DIAS_SEMANA[hoy.getDay()];
+  document.getElementById('fecha-larga').textContent =
+    `${nombreDia}, ${hoy.getDate()} de ${MESES[hoy.getMonth()]}`;
+}
+
+function actualizarTemaSegunHora() {
+  const h = hoy.getHours();
+  const esNoche = h >= 20 || h < 6;
+  document.documentElement.classList.toggle('noche', esNoche);
+}
+
+function mensajeEstado(tomada, horaMarcada) {
+  if (tomada) return `Marcada hoy a las ${horaMarcada}`;
+  const h = hoy.getHours();
+  if (h < 18) return 'Aún es pronto. Te avisaremos a las 22:00.';
+  if (h < 22) return 'Se acerca la hora de la cena.';
+  return 'Ya ha pasado tu hora habitual.';
+}
+
+function actualizarBoton() {
+  const boton = document.getElementById('boton-toma');
+  const textoBoton = document.getElementById('texto-boton');
+  const estadoHoy = document.getElementById('estado-hoy');
+  const tomada = !!registro[claveHoy];
+
+  boton.classList.toggle('tomada', tomada);
+  textoBoton.textContent = tomada ? 'Tomada' : 'Tomada hoy';
+  estadoHoy.textContent = mensajeEstado(tomada, registro[claveHoy]);
+  estadoHoy.classList.toggle('tomada', tomada);
+}
+
+function calcularRacha() {
+  let racha = 0;
+  let cursor = new Date(hoy);
+  while (registro[claveDia(cursor)]) {
+    racha++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return racha;
+}
+
+function actualizarRacha() {
+  const racha = calcularRacha();
+  const el = document.getElementById('racha');
+  if (racha === 0) {
+    el.textContent = 'Empieza hoy tu racha';
+  } else if (racha === 1) {
+    el.innerHTML = '<strong>1 día</strong> seguido';
+  } else {
+    el.innerHTML = `<strong>${racha} días</strong> seguidos`;
+  }
+}
+
+// Anillo tipo pastillero: 7 cápsulas, hoy arriba, girando hacia atrás en el tiempo
+function dibujarAnillo() {
+  const escenario = document.getElementById('escenario');
+  escenario.querySelectorAll('.capsula-dia').forEach(el => el.remove());
+
+  const radio = escenario.offsetWidth / 2 - 8;
+  const centro = escenario.offsetWidth / 2;
+  const pasos = 7;
+
+  for (let i = 0; i < pasos; i++) {
+    const fecha = new Date(hoy);
+    fecha.setDate(fecha.getDate() - i);
+    const marcada = !!registro[claveDia(fecha)];
+
+    const anguloGrados = -90 + i * (360 / pasos);
+    const anguloRad = anguloGrados * Math.PI / 180;
+    const x = centro + radio * Math.cos(anguloRad);
+    const y = centro + radio * Math.sin(anguloRad);
+
+    const capsula = document.createElement('div');
+    capsula.className = 'capsula-dia' + (marcada ? ' marcada' : '') + (i === 0 ? ' hoy' : '');
+    capsula.style.left = x + 'px';
+    capsula.style.top = y + 'px';
+    capsula.style.transform = `translate(-50%, -50%) rotate(${anguloGrados + 90}deg)`;
+    capsula.title = DIAS_SEMANA[fecha.getDay()] + ' ' + fecha.getDate();
+    escenario.insertBefore(capsula, escenario.firstChild);
+  }
+}
+
+function actualizarSemana() {
+  const fila = document.getElementById('fila-semana');
+  fila.innerHTML = '';
+  let marcadosSemana = 0;
+
+  for (let i = 6; i >= 0; i--) {
+    const fecha = new Date(hoy);
+    fecha.setDate(fecha.getDate() - i);
+    const marcado = !!registro[claveDia(fecha)];
+    if (marcado) marcadosSemana++;
+
+    const div = document.createElement('div');
+    div.className = 'dia-semana' + (marcado ? ' marcado' : '') + (i === 0 ? ' hoy' : '');
+    div.innerHTML = `<span class="punto"></span><span>${DIAS_CORTO[fecha.getDay()]}</span>`;
+    fila.appendChild(div);
+  }
+
+  document.getElementById('contador-semana').textContent = `${marcadosSemana} de 7`;
+}
+
+function actualizarHistorial() {
+  const lista = document.getElementById('lista-historial');
+  lista.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const fecha = new Date(hoy);
+    fecha.setDate(fecha.getDate() - i);
+    const clave = claveDia(fecha);
+    const marcado = !!registro[clave];
+    const etiqueta = i === 0 ? 'Hoy' : DIAS_CORTO[fecha.getDay()];
+
+    const chip = document.createElement('div');
+    chip.className = 'chip-historial' + (marcado ? ' marcado' : '');
+    chip.innerHTML = `<div class="num">${fecha.getDate()}</div><div class="lbl">${etiqueta}</div>`;
+    lista.appendChild(chip);
+  }
+}
+
+function refrescarTodo() {
+  actualizarBoton();
+  actualizarRacha();
+  dibujarAnillo();
+  actualizarSemana();
+  actualizarHistorial();
+}
+
+document.getElementById('boton-toma').addEventListener('click', () => {
+  if (registro[claveHoy]) {
+    delete registro[claveHoy];
+    mostrarToast('Toma desmarcada');
+  } else {
+    const horaActual = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    registro[claveHoy] = horaActual;
+    mostrarToast('Pastilla marcada como tomada');
+  }
+  guardarRegistro(registro);
+  refrescarTodo();
+  subirAFirebase();
+});
+
+document.getElementById('borrar-todo').addEventListener('click', () => {
+  if (confirm('¿Seguro que quieres borrar todo el historial?')) {
+    registro = {};
+    guardarRegistro(registro);
+    refrescarTodo();
+    subirAFirebase();
+    mostrarToast('Historial borrado');
+  }
+});
+
+actualizarFecha();
+actualizarTemaSegunHora();
+refrescarTodo();
+sincronizarConFirebase();
+window.addEventListener('resize', dibujarAnillo);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
