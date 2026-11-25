@@ -149,7 +149,7 @@
     border-color: var(--gold);
   }
 
-  .boton-toma {
+  .centro-estado {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -157,28 +157,38 @@
     width: 62%;
     height: 62%;
     border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    background: var(--moss);
-    color: var(--paper);
+    background: var(--paper-soft);
+    color: var(--ink);
     font-family: 'Fraunces', serif;
-    font-size: 19px;
-    font-weight: 560;
-    letter-spacing: -0.01em;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 0 14%;
     box-shadow: 0 14px 30px -10px var(--shadow);
-    transition: background 0.4s ease, transform 0.15s ease, box-shadow 0.4s ease;
+    transition: background 0.4s ease, color 0.4s ease;
   }
 
-  .boton-toma:active { transform: translate(-50%, -50%) scale(0.96); }
-
-  .boton-toma.tomada {
-    background: var(--berry);
+  .centro-estado .numero {
+    font-size: 34px;
+    font-weight: 560;
+    line-height: 1;
+    letter-spacing: -0.01em;
   }
+
+  .centro-estado .etiqueta {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--ash);
+    margin-top: 6px;
+  }
+
+  .centro-estado.completo {
+    background: var(--moss);
+    color: var(--paper);
+  }
+
+  .centro-estado.completo .etiqueta { color: var(--paper); opacity: 0.8; }
 
   .racha-linea {
     text-align: center;
@@ -216,6 +226,59 @@
     color: var(--ink);
     font-size: 13px;
   }
+
+  /* --- Botones de las 3 pastillas --- */
+  .pastillas {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pastilla-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 64px;
+    padding: 14px 18px;
+    border-radius: 18px;
+    border: 1.5px solid var(--line);
+    background: var(--paper-soft);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.3s ease, border-color 0.3s ease, transform 0.15s ease;
+  }
+
+  .pastilla-btn:active { transform: scale(0.98); }
+
+  .pastilla-btn .dosis {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ash);
+    margin-top: 2px;
+  }
+
+  .pastilla-btn .estado {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ash);
+    white-space: nowrap;
+  }
+
+  .pastilla-btn.tomada {
+    background: var(--moss);
+    border-color: var(--moss);
+    color: var(--paper);
+  }
+
+  .pastilla-btn.tomada .dosis { color: var(--paper); opacity: 0.75; }
+  .pastilla-btn.tomada .estado { color: var(--paper); }
 
   .semana {
     display: grid;
@@ -317,16 +380,22 @@
     <span class="fecha" id="fecha-larga"></span>
   </header>
 
-  <h1>Tu pastilla</h1>
+  <h1>Tus pastillas</h1>
   <div class="subestado" id="estado-hoy"></div>
 
   <div class="escenario" id="escenario">
-    <button class="boton-toma" id="boton-toma">
-      <span id="texto-boton">Tomada hoy</span>
-    </button>
+    <div class="centro-estado" id="centro-estado">
+      <span class="numero" id="centro-numero">0 de 3</span>
+      <span class="etiqueta">esta noche</span>
+    </div>
   </div>
 
   <div class="racha-linea" id="racha"></div>
+
+  <section>
+    <div class="titulo-seccion"><span>Esta noche</span></div>
+    <div class="pastillas" id="lista-pastillas"></div>
+  </section>
 
   <section>
     <div class="titulo-seccion">
@@ -354,11 +423,28 @@ const DIAS_CORTO = ['D','L','M','X','J','V','S'];
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const FIREBASE_URL = 'https://despensa-granon-default-rtdb.europe-west1.firebasedatabase.app';
 
+// Las 3 pastillas de cada noche. La tercera es la del colesterol;
+// si Raúl dice su nombre y su dosis, se pone aquí.
+const PASTILLAS = [
+  { id: 'avidart', nombre: 'Avidart', dosis: '0,5 mg' },
+  { id: 'minoxidil', nombre: 'Minoxidil', dosis: '2,5 mg' },
+  { id: 'colesterol', nombre: 'Colesterol', dosis: '' }
+];
+
 function claveDia(fecha) {
   const y = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, '0');
   const d = String(fecha.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+// Un día guarda la hora de cada pastilla: { avidart: '22:15', ... }.
+// Antes, con una sola pastilla, guardaba solo la hora como texto;
+// esa hora era la del colesterol, así que se convierte a su hueco.
+function normalizarDia(valor) {
+  if (!valor) return {};
+  if (typeof valor === 'string') return { colesterol: valor };
+  return valor;
 }
 
 function cargarRegistro() {
@@ -377,6 +463,20 @@ function guardarRegistro(registro) {
 let registro = cargarRegistro();
 const hoy = new Date();
 const claveHoy = claveDia(hoy);
+
+function diaDe(clave) {
+  return normalizarDia(registro[clave]);
+}
+
+function tomadasHoy() {
+  const dia = diaDe(claveHoy);
+  return PASTILLAS.filter(p => dia[p.id]).length;
+}
+
+function diaCompleto(clave) {
+  const dia = diaDe(clave);
+  return PASTILLAS.every(p => dia[p.id]);
+}
 
 async function sincronizarConFirebase() {
   try {
@@ -423,30 +523,64 @@ function actualizarTemaSegunHora() {
   document.documentElement.classList.toggle('noche', esNoche);
 }
 
-function mensajeEstado(tomada, horaMarcada) {
-  if (tomada) return `Marcada hoy a las ${horaMarcada}`;
+function mensajeEstado(tomadas) {
+  if (tomadas === 3) return 'Las 3 tomadas. Buenas noches.';
+  if (tomadas === 2) return 'Te falta 1 de 3.';
+  if (tomadas === 1) return 'Te faltan 2 de 3.';
   const h = hoy.getHours();
   if (h < 18) return 'Aún es pronto. Te avisaremos a las 22:00.';
   if (h < 22) return 'Se acerca la hora de la cena.';
   return 'Ya ha pasado tu hora habitual.';
 }
 
-function actualizarBoton() {
-  const boton = document.getElementById('boton-toma');
-  const textoBoton = document.getElementById('texto-boton');
-  const estadoHoy = document.getElementById('estado-hoy');
-  const tomada = !!registro[claveHoy];
+function actualizarCentro() {
+  const tomadas = tomadasHoy();
+  const centro = document.getElementById('centro-estado');
+  document.getElementById('centro-numero').textContent = `${tomadas} de 3`;
+  centro.classList.toggle('completo', tomadas === 3);
+}
 
-  boton.classList.toggle('tomada', tomada);
-  textoBoton.textContent = tomada ? 'Tomada' : 'Tomada hoy';
-  estadoHoy.textContent = mensajeEstado(tomada, registro[claveHoy]);
-  estadoHoy.classList.toggle('tomada', tomada);
+function actualizarEstado() {
+  const tomadas = tomadasHoy();
+  const estadoHoy = document.getElementById('estado-hoy');
+  estadoHoy.textContent = mensajeEstado(tomadas);
+  estadoHoy.classList.toggle('tomada', tomadas === 3);
+}
+
+function actualizarPastillas() {
+  const lista = document.getElementById('lista-pastillas');
+  const dia = diaDe(claveHoy);
+  lista.innerHTML = '';
+  PASTILLAS.forEach(p => {
+    const hora = dia[p.id];
+    const btn = document.createElement('button');
+    btn.className = 'pastilla-btn' + (hora ? ' tomada' : '');
+    btn.innerHTML =
+      `<span>${p.nombre}<span class="dosis">${p.dosis || ' '}</span></span>` +
+      `<span class="estado">${hora ? 'Tomada · ' + hora : 'Pendiente'}</span>`;
+    btn.addEventListener('click', () => {
+      const diaActual = diaDe(claveHoy);
+      if (diaActual[p.id]) {
+        delete diaActual[p.id];
+        mostrarToast(p.nombre + ' desmarcada');
+      } else {
+        const horaActual = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        diaActual[p.id] = horaActual;
+        mostrarToast(p.nombre + ' marcada como tomada');
+      }
+      registro[claveHoy] = diaActual;
+      guardarRegistro(registro);
+      refrescarTodo();
+      subirAFirebase();
+    });
+    lista.appendChild(btn);
+  });
 }
 
 function calcularRacha() {
   let racha = 0;
   let cursor = new Date(hoy);
-  while (registro[claveDia(cursor)]) {
+  while (diaCompleto(claveDia(cursor))) {
     racha++;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -465,7 +599,8 @@ function actualizarRacha() {
   }
 }
 
-// Anillo tipo pastillero: 7 cápsulas, hoy arriba, girando hacia atrás en el tiempo
+// Anillo tipo pastillero: 7 cápsulas, hoy arriba, girando hacia atrás en el tiempo.
+// Una cápsula se marca solo el día que se tomaron las 3 pastillas.
 function dibujarAnillo() {
   const escenario = document.getElementById('escenario');
   escenario.querySelectorAll('.capsula-dia').forEach(el => el.remove());
@@ -477,7 +612,7 @@ function dibujarAnillo() {
   for (let i = 0; i < pasos; i++) {
     const fecha = new Date(hoy);
     fecha.setDate(fecha.getDate() - i);
-    const marcada = !!registro[claveDia(fecha)];
+    const marcada = diaCompleto(claveDia(fecha));
 
     const anguloGrados = -90 + i * (360 / pasos);
     const anguloRad = anguloGrados * Math.PI / 180;
@@ -502,7 +637,7 @@ function actualizarSemana() {
   for (let i = 6; i >= 0; i--) {
     const fecha = new Date(hoy);
     fecha.setDate(fecha.getDate() - i);
-    const marcado = !!registro[claveDia(fecha)];
+    const marcado = diaCompleto(claveDia(fecha));
     if (marcado) marcadosSemana++;
 
     const div = document.createElement('div');
@@ -521,7 +656,7 @@ function actualizarHistorial() {
     const fecha = new Date(hoy);
     fecha.setDate(fecha.getDate() - i);
     const clave = claveDia(fecha);
-    const marcado = !!registro[clave];
+    const marcado = diaCompleto(clave);
     const etiqueta = i === 0 ? 'Hoy' : DIAS_CORTO[fecha.getDay()];
 
     const chip = document.createElement('div');
@@ -532,26 +667,14 @@ function actualizarHistorial() {
 }
 
 function refrescarTodo() {
-  actualizarBoton();
+  actualizarCentro();
+  actualizarEstado();
+  actualizarPastillas();
   actualizarRacha();
   dibujarAnillo();
   actualizarSemana();
   actualizarHistorial();
 }
-
-document.getElementById('boton-toma').addEventListener('click', () => {
-  if (registro[claveHoy]) {
-    delete registro[claveHoy];
-    mostrarToast('Toma desmarcada');
-  } else {
-    const horaActual = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    registro[claveHoy] = horaActual;
-    mostrarToast('Pastilla marcada como tomada');
-  }
-  guardarRegistro(registro);
-  refrescarTodo();
-  subirAFirebase();
-});
 
 document.getElementById('borrar-todo').addEventListener('click', () => {
   if (confirm('¿Seguro que quieres borrar todo el historial?')) {
